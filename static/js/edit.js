@@ -1465,11 +1465,8 @@
                         console.log('[Play] Loop restart from beginning:', pauseTime);
                     }
                     
-                    console.log('[Play] Scheduling playAudio() restart with pauseTime:', pauseTime);
-                    setTimeout(() => {
-                        console.log('[Play] Executing scheduled playAudio() restart');
-                        playAudio();
-                    }, 0);
+                    console.log('[Play] Immediately restarting playAudio() with pauseTime:', pauseTime);
+                    playAudio();
                 } else {
                     // 正常结束
                     console.log('[Play] Normal playback end (no loop). Cleaning up.');
