@@ -2074,8 +2074,18 @@
             // 修复：添加播放结束事件监听，支持循环播放
             sourceNode.onended = () => {
                 if (isLooping && audioBuffer) {
-                    // 循环播放：重置pauseTime并使用setTimeout避免递归调用栈溢出
-                    pauseTime = 0;
+                    // 循环播放：检查是否有选择区域
+                    const start = Math.min(selectionStart, selectionEnd);
+                    const end = Math.max(selectionStart, selectionEnd);
+                    
+                    if (end > start) {
+                        // 有选择区域时，从选择区域起点开始循环
+                        pauseTime = start;
+                    } else {
+                        // 没有选择区域时，从头开始循环
+                        pauseTime = 0;
+                    }
+                    
                     setTimeout(() => {
                         playAudio();
                     }, 0);
