@@ -543,6 +543,11 @@
             background: rgba(232, 67, 147, 0.05);
         }
 
+        .audio-item.playing {
+            background: rgba(255, 152, 0, 0.15);
+            border-left-color: #FF9800;
+        }
+
         @keyframes slideIn {
             from { opacity: 0; transform: translateY(15px); }
             to { opacity: 1; transform: translateY(0); }
@@ -896,6 +901,22 @@
         let mergedAudios = {};
         
         let currentMode = 'excel'; // 'text' 或 'excel'
+        
+        // 跟踪当前播放的音频项
+        let currentPlayingItem = null;
+        
+        // 设置当前播放的音频项
+        function setPlayingItem(audioItem) {
+            // 移除之前的播放标记
+            if (currentPlayingItem && currentPlayingItem !== audioItem) {
+                currentPlayingItem.classList.remove('playing');
+            }
+            // 添加新的播放标记
+            if (audioItem) {
+                audioItem.classList.add('playing');
+            }
+            currentPlayingItem = audioItem;
+        }
         
         // 按句号、问号分割文本
         function splitTextIntoSentences(text) {
@@ -1544,6 +1565,7 @@
                             
                             audioPlayer.addEventListener('play', function() {
                                 playStatus.classList.add('played');
+                                setPlayingItem(audioItem);
                             });
                             
                             regenerateBtn.addEventListener('click', () => {
@@ -1740,6 +1762,7 @@
                 
                 // 更新当前播放的片段状态
                 const playStatusElements = document.querySelectorAll(`#audio-group-${groupIndex} .play-status`);
+                const audioItems = document.querySelectorAll(`#audio-group-${groupIndex} .audio-item`);
                 if (playStatusElements[i]) {
                     // 清除之前的播放状态
                     document.querySelectorAll(`#audio-group-${groupIndex} .play-status`).forEach(status => {
@@ -1751,6 +1774,11 @@
                     
                     // 标记当前片段为已读
                     playStatusElements[i].classList.add('played');
+                    
+                    // 设置当前音频项的playing类
+                    if (audioItems[i]) {
+                        setPlayingItem(audioItems[i]);
+                    }
                 }
                 
                 // 播放当前片段
