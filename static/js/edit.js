@@ -1,751 +1,105 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>音频编辑</title>
-    <style>
-        /* CSS样式保持不变，与原始代码相同 */
-        :root {
-            --primary-color: #3498db;
-            --secondary-color: #2980b9;
-            --accent-color: #e74c3c;
-            --light-color: #ecf0f1;
-            --dark-color: #2c3e50;
-            --success-color: #2ecc71;
-            --warning-color: #f39c12;
-        }
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        
-        body {
-            background-color: #f5f7fa;
-            color: var(--dark-color);
-            line-height: 1.6;
-            padding: 20px;
-        }
-        
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-        }
-        
-        header {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            color: white;
-            padding: 20px;
-            text-align: center;
-        }
-        
-        h1 {
-            font-size: 2.2rem;
-            margin-bottom: 10px;
-        }
-        
-        .subtitle {
-            font-size: 1rem;
-            opacity: 0.9;
-        }
-        
-        .main-content {
-            display: grid;
-            grid-template-columns: 0.63fr 2.37fr;
-            /* gap: 20px; */
-            /* padding: 20px; */
-        }
-        
-        .sidebar {
-            /* background: var(--light-color); */
-            border-radius: 8px;
-            /* padding: 15px; */
-        }
-        
-        .main-panel {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-        
-        .section {
-            background: white;
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-        }
-        
-        .section-title {
-            font-size: 1.3rem;
-            margin-bottom: 13px;
-            padding-bottom: 8px;
-            border-bottom: 1px solid var(--light-color);
-            color: var(--secondary-color);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .upload-area {
-            border: 2px dashed var(--primary-color);
-            border-radius: 8px;
-            padding: 30px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s;
-            margin-bottom: 20px;
-        }
-        
-        .upload-area:hover {
-            background: rgba(52, 152, 219, 0.05);
-        }
-        
-        .upload-icon {
-            font-size: 3rem;
-            color: var(--primary-color);
-            margin-bottom: 10px;
-        }
-        
-        .audio-list {
-            max-height: 300px;
-            overflow-y: auto;
-        }
-        
-        .audio-item {
-            display: flex;
-            align-items: center;
-            padding: 10px;
-            border-radius: 5px;
-            margin-bottom: 10px;
-            background: white;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        }
-        
-        .audio-item.active {
-            border-left: 4px solid var(--primary-color);
-        }
-        
-        .audio-name {
-            flex: 1;
-            font-weight: 500;
-            font-size: 13px;
-        }
-        
-        .audio-controls {
-            display: flex;
-            gap: 5px;
-        }
-        
-        .btn {
-            padding: 8px 15px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: 500;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-        
-        .btn-primary {
-            background: var(--primary-color);
-            color: white;
-        }
-        
-        .btn-primary:hover {
-            background: var(--secondary-color);
-        }
-        
-        .btn-danger {
-            background: var(--accent-color);
-            color: white;
-        }
-        
-        .btn-danger:hover {
-            background: #c0392b;
-        }
-        
-        .btn-success {
-            background: var(--success-color);
-            color: white;
-        }
-        
-        .btn-success:hover {
-            background: #27ae60;
-        }
+        // ============================================
+        // Atomic Utility Functions
+        // ============================================
+        // Note: These utility functions are provided as building blocks for future
+        // code improvements. Existing code may not yet use them consistently.
+        // New code should prefer these atomic functions over direct DOM manipulation.
         
-        .btn-warning {
-            background: var(--warning-color);
-            color: white;
+        // DOM Element Selection
+        function getElementByIdSafe(id) {
+            return document.getElementById(id);
         }
         
-        .btn-warning:hover {
-            background: #e67e22;
+        function querySelectorAllSafe(selector) {
+            return document.querySelectorAll(selector);
         }
         
-        .btn-outline {
-            background: transparent;
-            border: 1px solid var(--primary-color);
-            color: var(--primary-color);
+        // Class Management
+        function addClassToElement(element, className) {
+            if (element) element.classList.add(className);
         }
         
-        .btn-outline:hover {
-            background: rgba(52, 152, 219, 0.1);
+        function removeClassFromElement(element, className) {
+            if (element) element.classList.remove(className);
         }
         
-        .btn-outline.active {
-            background: var(--primary-color);
-            color: white;
+        function hasClassOnElement(element, className) {
+            return element ? element.classList.contains(className) : false;
         }
         
-        .waveform-container {
-            background: var(--dark-color);
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 15px;
-            position: relative;
-            display: flex;
+        // Content Management
+        function setElementTextContent(element, text) {
+            if (element) element.textContent = text;
         }
         
-        #waveform {
-            width: 100%;
-            height: 150px;
-            background: #1a2530;
-            border-radius: 4px;
-            position: relative;
-            overflow: hidden;
-            cursor: pointer;
+        function setElementInnerHTML(element, html) {
+            if (element) element.innerHTML = html;
         }
         
-        .playhead {
-            position: absolute;
-            top: 0;
-            bottom: 0;
-            width: 2px;
-            background: var(--accent-color);
-            z-index: 10;
+        // Button State
+        function disableElement(element) {
+            if (element) element.disabled = true;
         }
         
-        .selection {
-            position: absolute;
-            top: 0;
-            bottom: 0;
-            background: rgba(52, 152, 219, 0.3);
-            z-index: 5;
+        function enableElement(element) {
+            if (element) element.disabled = false;
         }
         
-        .selection-handle {
-            position: absolute;
-            top: 0;
-            bottom: 0;
-            width: 1px;
-            background: rgba(255, 255, 255, 0.9);
-            cursor: col-resize;
-            z-index: 15;
+        // Math Utilities
+        function clamp(value, min, max) {
+            return Math.max(min, Math.min(max, value));
         }
-
-        .selection-handle::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            bottom: 0;
-            left: -5px;
-            right: -5px;
-            background: transparent;
-        }
-        
-        .selection-handle:hover {
-            background: rgba(255, 255, 255, 1);
-        }
-        
-        .selection-handle.start {
-            left: 0;
-        }
-        
-        .selection-handle.end {
-            right: 0;
-        }
-        
-        .playback-controls {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-        
-        .time-display {
-            text-align: center;
-            font-size: 0.9rem;
-            color: #7f8c8d;
-            margin-bottom: 15px;
-        }
-        
-        .clip-controls {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-            flex-wrap: wrap;
-        }
-        
-        .clip-list {
-            max-height: 300px;
-            overflow-y: auto;
-        }
-        
-        .clip-item {
-            display: flex;
-            align-items: center;
-            padding: 8px 10px;
-            border-radius: 4px;
-            margin-bottom: 5px;
-            background: var(--light-color);
-        }
-        
-        .clip-name {
-            flex: 1;
-        }
-        
-        .clip-controls-buttons {
-            display: flex;
-            gap: 5px;
-        }
-        
-        .clip-order-controls {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-            margin-right: 5px;
-        }
-        
-        .order-btn {
-            padding: 2px 5px;
-            font-size: 0.7rem;
-            background: #95a5a6;
-            color: white;
-            border: none;
-            border-radius: 2px;
-            cursor: pointer;
-        }
-        
-        .order-btn:hover {
-            background: #7f8c8d;
-        }
         
-        .order-btn:disabled {
-            background: #bdc3c7;
-            cursor: not-allowed;
+        function roundToDecimal(value, decimals) {
+            const factor = Math.pow(10, decimals);
+            return Math.round(value * factor) / factor;
         }
         
-        .shortcuts {
-            margin-top: 20px;
-            font-size: 0.85rem;
+        // Time Utilities
+        function secondsToMilliseconds(seconds) {
+            return Math.floor(seconds * 1000);
         }
         
-        .shortcut-item {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 4px;
-            font-size: 0.8rem;
+        function millisecondsToSeconds(milliseconds) {
+            return milliseconds / 1000;
         }
         
-        .key {
-            background: var(--dark-color);
-            color: white;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-size: 0.7rem;
+        // Audio Buffer Utilities
+        function createNewAudioBuffer(context, channels, length, sampleRate) {
+            return context.createBuffer(channels, length, sampleRate);
         }
         
-        .status-bar {
-            background: var(--light-color);
-            padding: 10px 20px;
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.9rem;
+        function getChannelDataFromBuffer(buffer, channel) {
+            return buffer.getChannelData(channel);
         }
         
-        .progress {
-            height: 5px;
-            background: #ddd;
-            border-radius: 5px;
-            margin: 10px 0;
-            overflow: hidden;
+        // URL Utilities
+        function createBlobURL(blob) {
+            return URL.createObjectURL(blob);
         }
         
-        .progress-bar {
-            height: 100%;
-            background: var(--primary-color);
-            width: 0%;
-            transition: width 0.3s;
+        function revokeBlobURL(url) {
+            if (url) URL.revokeObjectURL(url);
         }
         
-        input[type="range"] {
-            width: 100%;
+        // Array Utilities
+        function createArrayOfLength(length, fillValue = undefined) {
+            return new Array(length).fill(fillValue);
         }
         
-        .hidden {
-            display: none;
+        function filterArray(array, predicate) {
+            return array.filter(predicate);
         }
         
-        .rename-input {
-            width: 100%;
-            padding: 4px 8px;
-            border: 1px solid var(--primary-color);
-            border-radius: 4px;
-            font-size: 0.9rem;
+        // Async Utilities
+        function createDelay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
         }
         
-        .zoom-controls {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-        
-        .zoom-slider {
-            flex: 1;
-        }
-        
-        .zoom-value {
-            min-width: 60px;
-            text-align: center;
-            font-size: 0.9rem;
-        }
-        
-        .scroll-container {
-            width: 100%;
-            overflow-x: auto;
-            margin-top: 10px;
-            border-radius: 4px;
-            background: #2c3e50;
-        }
-        
-        .scroll-content {
-            height: 10px;
-            min-width: 100%;
-        }
-        
-        .scroll-thumb {
-            height: 100%;
-            background: rgba(52, 152, 219, 0.7);
-            border-radius: 4px;
-            cursor: grab;
-            position: relative;
-        }
-        
-        .scroll-thumb:active {
-            cursor: grabbing;
-        }
-        
-        /* 新增：响度控制滑动条样式 - 已修改增加长度 */
-        .amplitude-control-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            margin-left: -32px;
-            margin-right: -47px;
-            width: 110px; /* 增加宽度以适应更长的滑动条 */
-            padding: 0;
-            justify-content: center;
-        }
-        
-        .amplitude-label {
-            color: white;
-            font-size: 0.8rem;
-            margin-bottom: 10px;
-        }
-        
-        .amplitude-slider {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 100px;
-            height: 8px;
-            background: #ddd;
-            border-radius: 4px;
-            transform: rotate(-90deg);
-            transform-origin: center;
-            margin: 41px 0;
-        }
-        
-        .amplitude-slider::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: var(--primary-color);
-            cursor: pointer;
-        }
-        
-        .amplitude-slider::-moz-range-thumb {
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: var(--primary-color);
-            cursor: pointer;
-            border: none;
-        }
-        
-        .amplitude-value {
-            color: white;
-            font-size: 0.8rem;
-            margin-top: 10px;
-        }
-        
-        @media (max-width: 768px) {
-            .main-content {
-                grid-template-columns: 1fr;
-            }
-            
-            .clip-controls-buttons {
-                flex-direction: column;
-            }
-            
-            .section-title {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 10px;
-            }
-            
-            .clip-controls {
-                flex-direction: column;
-            }
-            
-            .amplitude-control-container {
-                margin-left: 0;
-                margin-top: 15px;
-                width: 100%;
-            }
-            
-            .amplitude-slider {
-                transform: rotate(0deg);
-                width: 100%;
-                margin: 10px 0;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <header>
-            <h1>音频编辑器</h1>
-            <p class="subtitle">上传、编辑、提取和拼接音频文件（支持WAV、MP3、M4A，自动转换为8kHz）</p>
-        </header>
+        // ============================================
+        // State Management
+        // ============================================
         
-        <div class="status-bar">
-            <span id="statusMessage">准备就绪 - 粘贴后自动选择粘贴内容</span>
-            <span id="autoSaveStatus">自动保存已启用</span>
-        </div>
-        <div class="main-content">
-            <div class="sidebar">
-                <div class="section">
-                    <h2 class="section-title">上传音频</h2>
-                    <div class="upload-area" id="uploadArea">
-                        <div class="upload-icon">🎵</div>
-                        <p style="font-size:small;">点击或拖放音频文件到这里（支持WAV、MP3、M4A，自动转换为8kHz）</p>
-                        <input type="file" id="fileInput" accept=".wav,.mp3,.m4a" multiple class="hidden">
-                    </div>
-                    
-                    <h2 class="section-title">
-                        音频列表
-                        <button class="btn btn-danger" id="clearAudioListBtn">
-                            <span>清空列表</span>
-                        </button>
-                    </h2>
-                <p style="font-size:small;">✅点击"加载"至波形图查看↗️</p>
-                    <div class="audio-list" id="audioList">
-                        <!-- 音频列表将在这里动态生成 -->
-                    </div>
-                    
-                    <div class="shortcuts">
-                        <h2 class="section-title">操作快捷键</h2>
-                        <div class="shortcut-item">
-                            <span>播放/暂停</span>
-                            <span class="key">空格</span>
-                        </div>
-                        <div class="shortcut-item">
-                            <span>撤销</span>
-                            <span class="key">Ctrl+Z</span>
-                        </div>
-                        <div class="shortcut-item">
-                            <span>恢复（反向撤销）</span>
-                            <span class="key">Ctrl+Y</span>
-                        </div>
-                        <div class="shortcut-item">
-                            <span>删除（删除选中区域）</span>
-                            <span class="key">Delete</span>
-                        </div>
-                        <div class="shortcut-item">
-                            <span>提取（仅保留选中区域）</span>
-                            <span class="key">Ctrl+K</span>
-                        </div>
-                        <div class="shortcut-item">
-                            <span>复制（复制选中区域）</span>
-                            <span class="key">Ctrl+C</span>
-                        </div>
-                        <div class="shortcut-item">
-                            <span>剪切（复制并删除选中区域）</span>
-                            <span class="key">Ctrl+X</span>
-                        </div>
-                        <div class="shortcut-item">
-                            <span>粘贴（插入复制的音频）</span>
-                            <span class="key">Ctrl+V</span>
-                        </div>
-                        <div class="shortcut-item">
-                            <span>暂存（选中区域存到暂存区）</span>
-                            <span class="key">Ctrl+S</span>
-                        </div>
-                        <!-- 新增：滚轮缩放提示 -->
-                        <div class="shortcut-item">
-                            <span>滚轮缩放</span>
-                            <span class="key">鼠标滚轮</span>
-                        </div>
-                        <!-- 新增：从选择点播放提示 -->
-                        <div class="shortcut-item">
-                            <span>从选择点播放</span>
-                            <span class="key">点击选择点+空格</span>
-                        </div>
-                        <!-- 新增：响度控制提示 -->
-                        <div class="shortcut-item">
-                            <span>响度控制</span>
-                            <span class="key">右侧滑动条</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="main-panel">
-                <div class="section">
-                    <h2 class="section-title">音频波形图</h2>
-                    
-                    <div class="clip-controls">
-                       <button class="btn btn-primary" id="saveClipBtn">
-                            <span>暂存</span>
-                        </button>
-                        <button class="btn btn-danger" id="deleteBtn">
-                            <span>删除</span>
-                        </button>
-                        <button class="btn btn-warning" id="cutBtn">
-                            <span>提取</span>
-                        </button>
-                        <button class="btn btn-success" id="exportBtn">
-                            <span>导出</span>
-                        </button>
-                        <button class="btn btn-outline" id="copyBtn">
-                            <span>复制</span>
-                        </button>
-                        <button class="btn btn-outline" id="cutToClipboardBtn">
-                            <span>剪切</span>
-                        </button>
-                        <button class="btn btn-outline" id="pasteBtn">
-                            <span>粘贴</span>
-                        </button>
-                        <button class="btn btn-outline" id="undoBtn">
-                            <span>撤销</span>
-                        </button>
-                        <button class="btn btn-outline" id="redoBtn">
-                            <span>恢复</span>
-                        </button>
-                    </div>
-                    
-                    <!-- 缩放控制 -->
-                    <div class="zoom-controls">
-                        <button class="btn btn-outline" id="zoomOutBtn">
-                            <span>缩小</span>
-                        </button>
-                        <input type="range" class="zoom-slider" id="zoomSlider" min="1" max="25" step="0.1" value="1">
-                        <button class="btn btn-outline" id="zoomInBtn">
-                            <span>放大</span>
-                        </button>
-                        <div class="zoom-value" id="zoomValue">100%</div>
-                        <button class="btn btn-outline" id="resetZoomBtn">
-                            <span>重置</span>
-                        </button>
-                    </div>
-                    
-                    <div class="waveform-container">
-                        <div id="waveform">
-                            <!-- 波形将在这里绘制 -->
-                            <div class="playhead" id="playhead"></div>
-                            <div class="selection" id="selection">
-                                <div class="selection-handle start" id="selectionStartHandle"></div>
-                                <div class="selection-handle end" id="selectionEndHandle"></div>
-                            </div>
-                        </div>
-                        
-                        <!-- 新增：响度控制滑动条 - 已修改增加长度 -->
-                        <div class="amplitude-control-container">
-                            <div class="amplitude-label">响度</div>
-                            <input type="range" class="amplitude-slider" id="amplitudeSlider" min="0" max="2" step="0.01" value="1">
-                            <div class="amplitude-value" id="amplitudeValue">100%</div>
-                        </div>
-                    </div>
-                    
-                    <!-- 滚动条 -->
-                    <div class="scroll-container" id="scrollContainer">
-                        <div class="scroll-content" id="scrollContent">
-                            <div class="scroll-thumb" id="scrollThumb"></div>
-                        </div>
-                    </div>
-                    
-                    <div class="time-display">
-                        <span>音频: </span>
-                        <span id="currentTime">0:00.000</span> / <span id="duration">0:00.000</span>
-                        <span id="selectionTime"> | 选择: 0:00.000 - 0:00.000 共0ms</span>
-                    </div>
-                    
-                    <div class="playback-controls">
-                        <button class="btn btn-outline" id="loopBtn" aria-label="循环播放" aria-pressed="false">
-                            <span>🔁 循环</span>
-                        </button>
-                        <button class="btn btn-primary" id="playBtn">
-                            <span>播放</span>
-                        </button>
-                        <button class="btn btn-outline" id="pauseBtn">
-                            <span>暂停</span>
-                        </button>
-                        <button class="btn btn-outline" id="stopBtn">
-                            <span>停止</span>
-                        </button>
-                    </div>
-                    
-                    <div class="progress">
-                        <div class="progress-bar" id="progressBar"></div>
-                    </div>
-                </div>
-                
-                <div class="section">
-                    <h2 class="section-title">
-                        音频暂存区
-                        
-                        <button class="btn btn-danger" id="clearClipsBtn">
-                            <span>清空列表</span>
-                        </button>
-                    </h2>
-                    <div style="font-size:medium;margin-bottom: 5px;">粘贴：复制音频后插入或覆盖波形图中的选中区域；加载：把音频上载到波形图中</div>
-                    <div class="clip-list" id="clipList">
-                        <!-- 音频片段将在这里显示 -->
-                    </div>
-                    
-                    <div style="margin-top: 20;">
-                        <button class="btn btn-success" id="mergeBtn">
-                            <span>合并片段</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script>
         // 主要变量
         let audioContext;
         let audioBuffer = null;
@@ -3416,6 +2770,3 @@
         
         // 定期更新UI
         setInterval(updateUI, 500);
-    </script>
-</body>
-</html>

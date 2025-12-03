@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>语音合成</title>
+    <!-- 使用Flask的url_for加载本地静态资源 -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='libs/css/all.min.css') }}">
+    <script src="{{ url_for('static', filename='libs/js/xlsx.full.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='libs/js/jszip.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='libs/js/FileSaver.min.js') }}"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tts.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>语音合成</h1>
+        
+        <p class="info">输入文本或上传Excel文件，每行文本可按句号、问号分割成独立的音频片段，打包导出时会自动合并为完整音频</p>
+        
+        <div class="controls-grid">
+            <div class="input-group">
+                
+                <label for="voiceSelect"><i class="fas fa-user"></i> 音色选择<span style="color: red; font-weight: bold;">&nbsp;[请勿选错]</span></label>
+                <select id="voiceSelect">
+                    <option value="" selected disabled>请选择...</option>
+                    <option value="龙安宣">龙安宣</option>
+                    <option value="LS音色-阿里">LS音色-阿里</option>
+                    <option value="YD音色-MinMax">YD音色-MinMax</option>
+                    <option value="YD音色1">YD音色1</option>
+                    <option value="YD音色2">YD音色2</option>
+                    <option value="YY音色">YY音色</option>
+                    <option value="XL音色">XL音色</option>
+                    <option value="TT音色">TT音色</option>
+                    <option value="MD音色">MD音色</option>
+                    <option value="LS音色">LS音色</option>
+                    <option value="清甜桃桃">清甜桃桃</option>
+                    <option value="软萌团子">软萌团子</option>
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label for="speedSelect"><i class="fas fa-tachometer-alt"></i> 语速调节</label>
+                <select id="speedSelect">
+                    <option value="0.5">0.5 (很慢)</option>
+                    <option value="0.6">0.6</option>
+                    <option value="0.7">0.7</option>
+                    <option value="0.8">0.8</option>
+                    <option value="0.9">0.9</option>
+                    <option value="1.0" selected>1.0 (正常)</option>
+                    <option value="1.1">1.1</option>
+                    <option value="1.2">1.2</option>
+                    <option value="1.3">1.3</option>
+                    <option value="1.4">1.4</option>
+                    <option value="1.5">1.5 (很快)</option>
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label for="volumeSelect"><i class="fas fa-volume-up"></i> 音量控制</label>
+                <select id="volumeSelect">
+                    <option value="0.5">0.5 (较小)</option>
+                    <option value="0.6">0.6</option>
+                    <option value="0.7">0.7</option>
+                    <option value="0.8">0.8</option>
+                    <option value="0.9">0.9</option>
+                    <option value="1.0" selected>1.0 (正常)</option>
+                    <option value="1.1">1.1</option>
+                    <option value="1.2">1.2</option>
+                    <option value="1.3">1.3</option>
+                    <option value="1.4">1.4</option>
+                    <option value="1.5">1.5 (较大)</option>
+                </select>
+            </div>
+
+            <!-- 新增是否分割文本片段选项 -->
+            <div class="input-group">
+                <label for="splitOption"><i class="fas fa-cut"></i> 文本分割</label>
+                <select id="splitOption">
+                    <option value="yes" selected>是（将按句号/问号分片）</option>
+                    <option value="no">否（将整段合成）</option>
+                </select>
+            </div>
+        </div>
+        
+        <!-- 标签页容器 -->
+        <div class="tabs-container">
+            <div class="tabs">
+                <div class="tab active" data-tab="excel-tab">
+                    <i class="fas fa-file-excel"></i> Excel文件批量合成
+                </div>
+                <div class="tab" data-tab="text-tab">
+                    <i class="fas fa-keyboard"></i> 输入文本逐行合成
+                </div>
+            </div>
+            
+            <!-- 文本输入标签页 -->
+            <div id="text-tab" class="tab-content">
+                <div class="input-group">
+                    <label for="textInput"><i class="fas fa-edit"></i> 输入文本</label>
+                    <textarea id="textInput" placeholder="请输入文本，一行一个文本，每个文本可按句号、问号分割成片段...&#10;例如：&#10;这是第一行文本。&#10;这是第二行文本。"></textarea>
+                </div>
+            </div>
+            
+            <!-- Excel文件上传标签页 -->
+            <div id="excel-tab" class="tab-content active">
+                <div class="input-group">
+                    <label for="fileInput"><i class="fas fa-file-upload"></i> 上传Excel文件</label>
+                    <div class="info" style="text-align: left; margin-left: 0px; margin-top: 8px;">
+                        <small>请上传包含"语料名称"、"文字内容"列的Excel文件，支持xlsx格式</small>
+                    </div>
+                    <div class="file-input-container">
+                        <label for="fileInput" class="file-input-label">
+                            <i class="fas fa-file-excel"></i> 点此选择xlsx文件（单选）
+                        </label>
+                        <div class="file-name" id="fileName">未选择文件</div>
+                        <input type="file" id="fileInput" accept=".xlsx,.xls">
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="btn-container">
+            <button id="synthesizeBtn" class="pulse-animation">
+                <i class="fas fa-bolt"></i> 开始逐个合成音频
+            </button>
+            <button id="downloadBtn" class="btn-secondary" disabled>
+                <i class="fas fa-download"></i> 打包导出所有音频
+            </button>
+        </div>
+        
+        <div class="progress-container">
+            <div class="progress-header">
+                <div class="status" id="status">准备生成音频...</div>
+                <div class="progress-percent" id="progressPercent">0%</div>
+            </div>
+            <div class="progress-bar">
+                <div class="progress" id="progressBar"></div>
+            </div>
+        </div>
+        
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            生成音频中，可先对已生成的音频执行操作...
+        </div>
+        
+        <div id="message"></div>
+        
+        <div class="audio-list" id="audioList"></div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/tts.js') }}"></script>
+</body>
+</html>

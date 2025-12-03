@@ -1,899 +1,95 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>语音合成</title>
-    <!-- 使用Flask的url_for加载本地静态资源 -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='libs/css/all.min.css') }}">
-    <script src="{{ url_for('static', filename='libs/js/xlsx.full.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='libs/js/jszip.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='libs/js/FileSaver.min.js') }}"></script>
-    <style>
-        /* 样式保持不变，与之前相同 */
-        :root {
-            --primary: #6C5CE7;
-            --primary-light: #A29BFE;
-            --primary-dark: #5649C0;
-            --secondary: #00CEC9;
-            --accent: #FD79A8;
-            --light-bg: #F9F8FF;
-            --card-bg: #FFFFFF;
-            --text-primary: #2D3436;
-            --text-secondary: #636E72;
-            --text-light: #B2BEC3;
-            --success: #00B894;
-            --warning: #FDCB6E;
-            --error: #E84393;
-            --border-light: #DFE6E9;
-            --shadow: 0 8px 25px rgba(108, 92, 231, 0.08);
-            --shadow-hover: 0 12px 35px rgba(108, 92, 231, 0.12);
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            min-height: 100vh;
-            background: var(--light-bg);
-            color: var(--text-primary);
-            padding: 15px;
-            position: relative;
-            overflow-x: hidden;
-            line-height: 1.5;
-            font-size: 14px;
-        }
-
-        body::before {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: 
-                radial-gradient(circle at 10% 20%, rgba(108, 92, 231, 0.03) 0%, transparent 20%),
-                radial-gradient(circle at 90% 80%, rgba(0, 206, 201, 0.03) 0%, transparent 20%);
-            z-index: -1;
-        }
-
-        .container {
-            max-width: 750px;
-            margin: 20px auto;
-            background: var(--card-bg);
-            border-radius: 18px;
-            padding: 25px;
-            box-shadow: var(--shadow);
-            border: 1px solid rgba(255, 255, 255, 0.8);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .container::before {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, var(--primary), var(--secondary));
-            border-radius: 18px 18px 0 0;
-        }
-
-        h1 {
-            text-align: center;
-            margin-bottom: 0px;
-            font-size: 1.8rem;
-            font-weight: 700;
-            color: var(--text-primary);
-            position: relative;
-            padding-bottom: 15px;
-        }
-
-        h1::after {
-            content: "";
-            display: block;
-            width: 60px;
-            height: 3px;
-            background: linear-gradient(90deg, var(--primary), var(--secondary));
-            margin: 12px auto;
-            border-radius: 2px;
-        }
-
-        h1 i {
-            color: var(--primary);
-            margin-right: 10px;
-            font-size: 1.6rem;
-        }
-
-        .info {
-            text-align: center;
-            color: var(--text-secondary);
-            font-size: 0.95rem;
-            margin-bottom: 20px;
-            line-height: 1.5;
-            max-width: 600px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-
-        /* 标签页样式 */
-        .tabs-container {
-            margin-bottom: 25px;
-        }
-
-        .tabs {
-            display: flex;
-            background: rgba(108, 92, 231, 0.05);
-            border-radius: 12px;
-            padding: 6px;
-            margin-bottom: 20px;
-        }
-
-        .tab {
-            flex: 1;
-            padding: 12px 20px;
-            text-align: center;
-            cursor: pointer;
-            border-radius: 8px;
-            font-weight: 600;
-            color: var(--text-secondary);
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-
-        .tab.active {
-            background: var(--card-bg);
-            color: var(--primary);
-            box-shadow: 0 4px 12px rgba(108, 92, 231, 0.15);
-        }
-
-        .tab i {
-            font-size: 1rem;
-        }
-
-        .tab-content {
-            display: none;
-            padding: 20px;
-            background: rgba(108, 92, 231, 0.03);
-            border-radius: 12px;
-            border: 1px dashed var(--primary-light);
-        }
-
-        .tab-content.active {
-            display: block;
-            animation: fadeIn 0.5s ease;
-        }
-
-        .tab-content-title {
-            font-weight: 600;
-            margin-bottom: 15px;
-            color: var(--primary);
-            display: flex;
-            align-items: center;
-        }
-
-        .tab-content-title i {
-            margin-right: 8px;
-        }
-
-        .controls-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-
-        .input-group {
-            margin-bottom: 18px;
-        }
-
-        .input-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: var(--text-primary);
-            font-size: 0.9rem;
-            display: flex;
-            align-items: center;
-        }
-
-        .input-group label i {
-            margin-right: 6px;
-            color: var(--primary);
-            font-size: 0.95rem;
-        }
-
-        select, textarea, input[type="file"] {
-            width: 100%;
-            padding: 10px 12px;
-            border-radius: 10px;
-            background: #FFFFFF;
-            border: 1px solid var(--border-light);
-            color: var(--text-primary);
-            font-size: 0.9rem;
-            transition: all 0.3s ease;
-            outline: none;
-            font-family: inherit;
-        }
-
-        select:focus, textarea:focus, input[type="file"]:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 2px rgba(108, 92, 231, 0.15);
-            transform: translateY(-1px);
-        }
-
-        select {
-            appearance: none;
-            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23636E72' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-            background-repeat: no-repeat;
-            background-position: right 12px center;
-            background-size: 1em;
-            cursor: pointer;
-        }
-
-        textarea {
-            min-height: 150px;
-            resize: vertical;
-            line-height: 1.4;
-        }
-
-        textarea::placeholder {
-            color: var(--text-light);
-        }
-
-        .file-input-container {
-            position: relative;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .file-input-label {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 10px 16px;
-            background: var(--primary-light);
-            color: white;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-weight: 500;
-            font-size: 0.9rem;
-        }
-
-        .file-input-label:hover {
-            background: var(--primary);
-        }
-
-        .file-input-label i {
-            margin-right: 6px;
-        }
-
-        .file-name {
-            flex: 1;
-            padding: 10px 12px;
-            background: #FFFFFF;
-            border: 1px solid var(--border-light);
-            border-radius: 10px;
-            font-size: 0.9rem;
-            color: var(--text-secondary);
-        }
-
-        input[type="file"] {
-            position: absolute;
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-
-        .btn-container {
-            text-align: center;
-            margin: 25px 0;
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-        }
-
-        button {
-            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-            color: white;
-            border: none;
-            padding: 12px 30px;
-            font-size: 1rem;
-            font-weight: 600;
-            border-radius: 40px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 8px 20px rgba(108, 92, 231, 0.3);
-            position: relative;
-            overflow: hidden;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-
-        button:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 12px 25px rgba(108, 92, 231, 0.4);
-            background: linear-gradient(135deg, var(--primary-light), var(--primary));
-        }
-
-        button:active:not(:disabled) {
-            transform: translateY(1px);
-        }
-
-        button:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        button::after {
-            content: "";
-            position: absolute;
-            top: -50%;
-            left: -60%;
-            width: 15px;
-            height: 200%;
-            background: rgba(255, 255, 255, 0.2);
-            transform: rotate(30deg);
-            transition: all 0.6s ease;
-        }
-
-        button:hover:not(:disabled)::after {
-            left: 120%;
-        }
-
-        .btn-secondary {
-            background: linear-gradient(135deg, var(--secondary), #00a8a3);
-            box-shadow: 0 8px 20px rgba(0, 206, 201, 0.3);
-        }
-
-        .btn-secondary:hover:not(:disabled) {
-            background: linear-gradient(135deg, #00e5de, var(--secondary));
-            box-shadow: 0 12px 25px rgba(0, 206, 201, 0.4);
-        }
-
-        .btn-small {
-            padding: 8px 16px;
-            font-size: 0.85rem;
-            border-radius: 20px;
-            box-shadow: 0 4px 10px rgba(108, 92, 231, 0.2);
-        }
-
-        /* 新增：删除按钮样式 */
-        .btn-danger {
-            background: linear-gradient(135deg, var(--error), #d63031);
-            box-shadow: 0 4px 10px rgba(232, 67, 147, 0.2);
-        }
-
-        .btn-danger:hover:not(:disabled) {
-            background: linear-gradient(135deg, #ff7675, var(--error));
-            box-shadow: 0 6px 15px rgba(232, 67, 147, 0.3);
-        }
-
-        .progress-container {
-            margin: 20px 0;
-            background: #F8F9FA;
-            border-radius: 12px;
-            padding: 18px;
-            border: 1px solid var(--border-light);
-        }
-
-        .progress-header {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 12px;
-            align-items: center;
-        }
-
-        .status {
-            font-weight: 600;
-            font-size: 0.95rem;
-            color: var(--text-primary);
-        }
-
-        .progress-percent {
-            font-size: 0.9rem;
-            color: var(--text-secondary);
-            font-weight: 600;
-        }
-
-        .progress-bar {
-            height: 8px;
-            background-color: #E9ECEF;
-            border-radius: 8px;
-            overflow: hidden;
-            position: relative;
-        }
-
-        .progress {
-            height: 100%;
-            background: linear-gradient(90deg, var(--primary), var(--secondary));
-            width: 0%;
-            border-radius: 8px;
-            transition: width 0.5s ease;
-            position: relative;
-        }
-
-        .progress::after {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
-            animation: progressShine 2s infinite;
-        }
-
-        @keyframes progressShine {
-            0% { transform: translateX(-100%); }
-            100% { transform: translateX(100%); }
-        }
-
-        .loading {
-            display: none;
-            text-align: center;
-            margin: 20px 0;
-            font-size: 1rem;
-            color: var(--text-secondary);
-        }
-
-        .spinner {
-            display: inline-block;
-            width: 24px;
-            height: 24px;
-            border: 3px solid rgba(108, 92, 231, 0.2);
-            border-radius: 50%;
-            border-top-color: var(--primary);
-            animation: spin 1s ease-in-out infinite;
-            margin-right: 8px;
-            vertical-align: middle;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        #message {
-            text-align: center;
-            padding: 14px;
-            border-radius: 12px;
-            margin: 18px 0;
-            font-weight: 600;
-            font-size: 0.95rem;
-            animation: fadeIn 0.5s ease;
-        }
-
-        #message.success {
-            background: rgba(0, 184, 148, 0.1);
-            border: 1px solid rgba(0, 184, 148, 0.2);
-            color: var(--success);
-        }
-
-        #message.error {
-            background: rgba(232, 67, 147, 0.1);
-            border: 1px solid rgba(232, 67, 147, 0.2);
-            color: var(--error);
-        }
-
-        .audio-list {
-            margin-top: 20px;
-        }
-
-        .audio-group {
-            background: #F8F9FA;
-            border-radius: 12px;
-            padding: 18px;
-            margin-bottom: 20px;
-            border: 1px solid var(--border-light);
-            transition: all 0.3s ease;
-            animation: slideIn 0.5s ease;
-        }
-
-        .audio-group:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-hover);
-            border-color: var(--primary-light);
-        }
-
-        .audio-group-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-            padding-bottom: 10px;
-            border-bottom: 1px dashed var(--border-light);
-        }
-
-        .audio-group-title {
-            font-weight: 600;
-            color: var(--primary);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .audio-group-controls {
-            display: flex;
-            gap: 10px;
-        }
-
-        .audio-item {
-            margin-bottom: 15px;
-            padding: 15px;
-            background: rgba(255, 255, 255, 0.7);
-            border-radius: 8px;
-            border-left: 3px solid var(--primary-light);
-        }
-
-        .audio-item.error {
-            border-left-color: var(--error);
-            background: rgba(232, 67, 147, 0.05);
-        }
-
-        .audio-item.playing {
-            background: rgba(255, 152, 0, 0.15);
-            border-left-color: #FF9800;
-        }
-
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateY(15px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .audio-text {
-            margin-bottom: 14px;
-            padding: 10px 12px;
-            background: rgba(108, 92, 231, 0.05);
-            border-left: 3px solid var(--primary);
-            border-radius: 0 6px 6px 0;
-            font-weight: 500;
-            color: var(--text-primary);
-            font-size: 0.9rem;
-            display: flex;
-            align-items: flex-start;
-            min-height: 40px;
-        }
-
-        .audio-text-editable {
-            flex: 1;
-            background: transparent;
-            border: none;
-            outline: none;
-            font-family: inherit;
-            font-size: inherit;
-            color: inherit;
-            padding: 0;
-            margin: 0;
-            resize: none;
-            line-height: 1.4;
-            overflow: hidden;
-            min-height: 20px;
-            height: auto;
-            width: 100%;
-        }
-
-        .audio-text-editable:focus {
-            background: rgba(255, 255, 255, 0.5);
-            border-radius: 4px;
-            padding: 2px 4px;
-        }
-
-        .audio-controls {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-
-        .audio-label-container {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .play-status {
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            background-color: var(--text-light);
-            transition: all 0.3s ease;
-        }
-
-        .play-status.played {
-            background-color: var(--success);
-        }
-
-        .audio-label {
-            background: var(--primary);
-            color: white;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-weight: 600;
-            font-size: 0.8rem;
-            box-shadow: 0 2px 8px rgba(108, 92, 231, 0.2);
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .audio-label i {
-            font-size: 0.7rem;
-        }
-
-        .audio-controls-buttons {
-            display: flex;
-            gap: 10px;
-        }
-
-        audio {
-            width: 100%;
-            border-radius: 10px;
-            outline: none;
-            height: 40px;
-        }
-
-        audio::-webkit-media-controls-panel {
-            background: #F1F3F4;
-            border-radius: 10px;
-        }
-
-        .error-message {
-            color: var(--error);
-            font-weight: 500;
-            padding: 10px;
-            background: rgba(232, 67, 147, 0.05);
-            border-radius: 6px;
-            margin-top: 8px;
-            display: flex;
-            align-items: center;
-            font-size: 0.9rem;
-        }
-
-        .error-message i {
-            margin-right: 6px;
-        }
-
-        @media (max-width: 768px) {
-            .container {
-                margin: 15px auto;
-                padding: 20px;
-                border-radius: 15px;
-            }
-            
-            h1 {
-                font-size: 1.6rem;
-            }
-            
-            .controls-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .btn-container {
-                flex-direction: column;
-            }
-            
-            button {
-                width: 100%;
-                padding: 14px;
-            }
-
-            .audio-controls {
-                flex-direction: column;
-                gap: 10px;
-                align-items: flex-start;
-            }
-
-            .audio-controls-buttons {
-                width: 100%;
-                justify-content: flex-end;
-            }
-
-            .audio-group-header {
-                flex-direction: column;
-                gap: 10px;
-                align-items: flex-start;
-            }
-
-            .audio-group-controls {
-                width: 100%;
-                justify-content: flex-end;
-            }
-        }
-
-        @media (max-width: 480px) {
-            body {
-                padding: 10px;
-            }
-            
-            .container {
-                padding: 15px;
-            }
-            
-            h1 {
-                font-size: 1.4rem;
-            }
-            
-            .info {
-                font-size: 0.9rem;
-            }
-            
-            .audio-controls-buttons {
-                flex-direction: column;
-                width: 100%;
-            }
-        }
-
-        .pulse-animation {
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(108, 92, 231, 0.4); }
-            70% { box-shadow: 0 0 0 10px rgba(108, 92, 231, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(108, 92, 231, 0); }
-        }
-
-        .fade-in {
-            animation: fadeIn 0.5s ease-in;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>语音合成</h1>
+        // ============================================
+        // Atomic Utility Functions
+        // ============================================
+        // Note: These utility functions are provided as building blocks for future
+        // code improvements. Existing code may not yet use them consistently.
+        // New code should prefer these atomic functions over direct DOM manipulation.
         
-        <p class="info">输入文本或上传Excel文件，每行文本可按句号、问号分割成独立的音频片段，打包导出时会自动合并为完整音频</p>
+        // DOM Element Selection
+        function getElementById(id) {
+            return document.getElementById(id);
+        }
         
-        <div class="controls-grid">
-            <div class="input-group">
-                
-                <label for="voiceSelect"><i class="fas fa-user"></i> 音色选择<span style="color: red; font-weight: bold;">&nbsp;[请勿选错]</span></label>
-                <select id="voiceSelect">
-                    <option value="" selected disabled>请选择...</option>
-                    <option value="龙安宣">龙安宣</option>
-                    <option value="LS音色-阿里">LS音色-阿里</option>
-                    <option value="YD音色-MinMax">YD音色-MinMax</option>
-                    <option value="YD音色1">YD音色1</option>
-                    <option value="YD音色2">YD音色2</option>
-                    <option value="YY音色">YY音色</option>
-                    <option value="XL音色">XL音色</option>
-                    <option value="TT音色">TT音色</option>
-                    <option value="MD音色">MD音色</option>
-                    <option value="LS音色">LS音色</option>
-                    <option value="清甜桃桃">清甜桃桃</option>
-                    <option value="软萌团子">软萌团子</option>
-                </select>
-            </div>
-
-            <div class="input-group">
-                <label for="speedSelect"><i class="fas fa-tachometer-alt"></i> 语速调节</label>
-                <select id="speedSelect">
-                    <option value="0.5">0.5 (很慢)</option>
-                    <option value="0.6">0.6</option>
-                    <option value="0.7">0.7</option>
-                    <option value="0.8">0.8</option>
-                    <option value="0.9">0.9</option>
-                    <option value="1.0" selected>1.0 (正常)</option>
-                    <option value="1.1">1.1</option>
-                    <option value="1.2">1.2</option>
-                    <option value="1.3">1.3</option>
-                    <option value="1.4">1.4</option>
-                    <option value="1.5">1.5 (很快)</option>
-                </select>
-            </div>
-
-            <div class="input-group">
-                <label for="volumeSelect"><i class="fas fa-volume-up"></i> 音量控制</label>
-                <select id="volumeSelect">
-                    <option value="0.5">0.5 (较小)</option>
-                    <option value="0.6">0.6</option>
-                    <option value="0.7">0.7</option>
-                    <option value="0.8">0.8</option>
-                    <option value="0.9">0.9</option>
-                    <option value="1.0" selected>1.0 (正常)</option>
-                    <option value="1.1">1.1</option>
-                    <option value="1.2">1.2</option>
-                    <option value="1.3">1.3</option>
-                    <option value="1.4">1.4</option>
-                    <option value="1.5">1.5 (较大)</option>
-                </select>
-            </div>
-
-            <!-- 新增是否分割文本片段选项 -->
-            <div class="input-group">
-                <label for="splitOption"><i class="fas fa-cut"></i> 文本分割</label>
-                <select id="splitOption">
-                    <option value="yes" selected>是（将按句号/问号分片）</option>
-                    <option value="no">否（将整段合成）</option>
-                </select>
-            </div>
-        </div>
+        function querySelectorAll(selector) {
+            return document.querySelectorAll(selector);
+        }
         
-        <!-- 标签页容器 -->
-        <div class="tabs-container">
-            <div class="tabs">
-                <div class="tab active" data-tab="excel-tab">
-                    <i class="fas fa-file-excel"></i> Excel文件批量合成
-                </div>
-                <div class="tab" data-tab="text-tab">
-                    <i class="fas fa-keyboard"></i> 输入文本逐行合成
-                </div>
-            </div>
-            
-            <!-- 文本输入标签页 -->
-            <div id="text-tab" class="tab-content">
-                <div class="input-group">
-                    <label for="textInput"><i class="fas fa-edit"></i> 输入文本</label>
-                    <textarea id="textInput" placeholder="请输入文本，一行一个文本，每个文本可按句号、问号分割成片段...&#10;例如：&#10;这是第一行文本。&#10;这是第二行文本。"></textarea>
-                </div>
-            </div>
-            
-            <!-- Excel文件上传标签页 -->
-            <div id="excel-tab" class="tab-content active">
-                <div class="input-group">
-                    <label for="fileInput"><i class="fas fa-file-upload"></i> 上传Excel文件</label>
-                    <div class="info" style="text-align: left; margin-left: 0px; margin-top: 8px;">
-                        <small>请上传包含"语料名称"、"文字内容"列的Excel文件，支持xlsx格式</small>
-                    </div>
-                    <div class="file-input-container">
-                        <label for="fileInput" class="file-input-label">
-                            <i class="fas fa-file-excel"></i> 点此选择xlsx文件（单选）
-                        </label>
-                        <div class="file-name" id="fileName">未选择文件</div>
-                        <input type="file" id="fileInput" accept=".xlsx,.xls">
-                    </div>
-                </div>
-            </div>
-        </div>
+        // Class Management
+        function addClass(element, className) {
+            if (element) element.classList.add(className);
+        }
         
-        <div class="btn-container">
-            <button id="synthesizeBtn" class="pulse-animation">
-                <i class="fas fa-bolt"></i> 开始逐个合成音频
-            </button>
-            <button id="downloadBtn" class="btn-secondary" disabled>
-                <i class="fas fa-download"></i> 打包导出所有音频
-            </button>
-        </div>
+        function removeClass(element, className) {
+            if (element) element.classList.remove(className);
+        }
         
-        <div class="progress-container">
-            <div class="progress-header">
-                <div class="status" id="status">准备生成音频...</div>
-                <div class="progress-percent" id="progressPercent">0%</div>
-            </div>
-            <div class="progress-bar">
-                <div class="progress" id="progressBar"></div>
-            </div>
-        </div>
+        function hasClass(element, className) {
+            return element ? element.classList.contains(className) : false;
+        }
         
-        <div id="loading" class="loading">
-            <div class="spinner"></div>
-            生成音频中，可先对已生成的音频执行操作...
-        </div>
+        // Content Management
+        function setTextContent(element, text) {
+            if (element) element.textContent = text;
+        }
         
-        <div id="message"></div>
+        function setInnerHTML(element, html) {
+            if (element) element.innerHTML = html;
+        }
         
-        <div class="audio-list" id="audioList"></div>
-    </div>
-
-    <script>
+        // Attribute Management
+        function setAttribute(element, attr, value) {
+            if (element) element.setAttribute(attr, value);
+        }
+        
+        function getAttribute(element, attr) {
+            return element ? element.getAttribute(attr) : null;
+        }
+        
+        // Button State Management
+        function disableButton(button) {
+            if (button) button.disabled = true;
+        }
+        
+        function enableButton(button) {
+            if (button) button.disabled = false;
+        }
+        
+        // Delay Utility
+        function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+        
+        // URL Management
+        function createObjectURL(blob) {
+            return URL.createObjectURL(blob);
+        }
+        
+        function revokeObjectURL(url) {
+            if (url) URL.revokeObjectURL(url);
+        }
+        
+        // Array Utilities
+        function filterEmptyStrings(arr) {
+            return arr.filter(item => item.trim() !== '');
+        }
+        
+        function isArrayEmpty(arr) {
+            return !arr || arr.length === 0;
+        }
+        
+        // String Utilities
+        function trimString(str) {
+            return str.trim();
+        }
+        
+        function isStringEmpty(str) {
+            return !str || str.trim() === '';
+        }
+        
+        // ============================================
+        // State Management
+        // ============================================
+        
         // 存储生成的音频文件
         let audioGroups = []; // 每个组包含完整的文本和其片段
         
@@ -1991,6 +1187,3 @@
                 reader.readAsArrayBuffer(file);
             });
         }
-    </script>
-</body>
-</html>
