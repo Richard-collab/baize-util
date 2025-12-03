@@ -703,7 +703,7 @@
                     </div>
                     
                     <div class="playback-controls">
-                        <button class="btn btn-outline" id="loopBtn">
+                        <button class="btn btn-outline" id="loopBtn" aria-label="循环播放" aria-pressed="false">
                             <span>🔁 循环</span>
                         </button>
                         <button class="btn btn-primary" id="playBtn">
@@ -1999,9 +1999,11 @@
             isLooping = !isLooping;
             if (isLooping) {
                 loopBtn.classList.add('active');
+                loopBtn.setAttribute('aria-pressed', 'true');
                 statusMessage.textContent = '循环播放已启用';
             } else {
                 loopBtn.classList.remove('active');
+                loopBtn.setAttribute('aria-pressed', 'false');
                 statusMessage.textContent = '循环播放已禁用';
             }
         }
@@ -2040,7 +2042,15 @@
                 startOffset = pauseTime;
                 // 如果有选择区域，确保在该区域内播放
                 if (end > start) {
-                    duration = end - startOffset;
+                    // 确保pauseTime在选择区域内
+                    if (pauseTime >= start && pauseTime < end) {
+                        duration = end - startOffset;
+                    } else {
+                        // 如果pauseTime在区域外，从区域开始播放
+                        startOffset = start;
+                        duration = end - start;
+                        pauseTime = 0;
+                    }
                 } else {
                     duration = audioBuffer.duration - startOffset;
                 }
@@ -2064,9 +2074,11 @@
             // 修复：添加播放结束事件监听，支持循环播放
             sourceNode.onended = () => {
                 if (isLooping && audioBuffer) {
-                    // 循环播放：重置pauseTime并重新播放
+                    // 循环播放：重置pauseTime并使用setTimeout避免递归调用栈溢出
                     pauseTime = 0;
-                    playAudio();
+                    setTimeout(() => {
+                        playAudio();
+                    }, 0);
                 } else {
                     // 正常结束
                     isPlaying = false;
