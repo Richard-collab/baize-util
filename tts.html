@@ -907,8 +907,12 @@
         
         // 设置当前播放的音频项
         function setPlayingItem(audioItem) {
+            // 如果是同一个项目，无需做任何操作
+            if (currentPlayingItem === audioItem) {
+                return;
+            }
             // 移除之前的播放标记
-            if (currentPlayingItem && currentPlayingItem !== audioItem) {
+            if (currentPlayingItem) {
                 currentPlayingItem.classList.remove('playing');
             }
             // 添加新的播放标记
@@ -1753,6 +1757,10 @@
             button.isPlaying = true;
             button.innerHTML = '<i class="fas fa-pause"></i> 暂停播放音频';
             
+            // 预先查询DOM元素，避免在循环中重复查询
+            const playStatusElements = document.querySelectorAll(`#audio-group-${groupIndex} .play-status`);
+            const audioItems = document.querySelectorAll(`#audio-group-${groupIndex} .audio-item`);
+            
             // 依次播放每个片段
             for (let i = 0; i < validSegments.length; i++) {
                 // 如果用户点击了暂停，则停止播放
@@ -1761,11 +1769,9 @@
                 }
                 
                 // 更新当前播放的片段状态
-                const playStatusElements = document.querySelectorAll(`#audio-group-${groupIndex} .play-status`);
-                const audioItems = document.querySelectorAll(`#audio-group-${groupIndex} .audio-item`);
                 if (playStatusElements[i]) {
                     // 清除之前的播放状态
-                    document.querySelectorAll(`#audio-group-${groupIndex} .play-status`).forEach(status => {
+                    playStatusElements.forEach(status => {
                         status.classList.remove('playing');
                     });
                     
