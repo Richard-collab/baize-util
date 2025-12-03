@@ -1448,6 +1448,12 @@
             // 修复：添加播放结束事件监听，支持循环播放
             sourceNode.onended = () => {
                 console.log('[Play] Audio playback ended. isLooping:', isLooping, 'audioBuffer:', !!audioBuffer);
+                
+                // 检查isPlaying状态，如果为false说明是手动停止的，不应触发循环
+                if (!isPlaying) {
+                    console.log('[Play] Playback was manually stopped, skipping loop logic');
+                    return;
+                }
                 if (isLooping && audioBuffer) {
                     console.log('[Play] Loop mode is active, preparing to restart playback');
                     // 循环播放：检查是否有选择区域
@@ -1511,7 +1517,14 @@
             
             isPlaying = false;
             pauseTime = 0;  // 只有停止时才重置pauseTime
-            console.log('[Stop] Reset state - isPlaying:', isPlaying, 'pauseTime:', pauseTime);
+            isLooping = false;  // 重置循环状态
+            console.log('[Stop] Reset state - isPlaying:', isPlaying, 'pauseTime:', pauseTime, 'isLooping:', isLooping);
+            
+            // 更新循环按钮UI
+            loopBtn.classList.remove('active');
+            loopBtn.setAttribute('aria-pressed', 'false');
+            console.log('[Stop] Loop button UI updated - active class removed');
+            
             updatePlayButton();
             updatePlayhead();  // 移动playhead到起点
             statusMessage.textContent = '音频已停止';
