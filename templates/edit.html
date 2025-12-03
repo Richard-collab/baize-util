@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>音频编辑</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/edit.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>音频编辑器</h1>
+            <p class="subtitle">上传、编辑、提取和拼接音频文件（支持WAV、MP3、M4A，自动转换为8kHz）</p>
+        </header>
+        
+        <div class="status-bar">
+            <span id="statusMessage">准备就绪 - 粘贴后自动选择粘贴内容</span>
+            <span id="autoSaveStatus">自动保存已启用</span>
+        </div>
+        <div class="main-content">
+            <div class="sidebar">
+                <div class="section">
+                    <h2 class="section-title">上传音频</h2>
+                    <div class="upload-area" id="uploadArea">
+                        <div class="upload-icon">🎵</div>
+                        <p style="font-size:small;">点击或拖放音频文件到这里（支持WAV、MP3、M4A，自动转换为8kHz）</p>
+                        <input type="file" id="fileInput" accept=".wav,.mp3,.m4a" multiple class="hidden">
+                    </div>
+                    
+                    <h2 class="section-title">
+                        音频列表
+                        <button class="btn btn-danger" id="clearAudioListBtn">
+                            <span>清空列表</span>
+                        </button>
+                    </h2>
+                <p style="font-size:small;">✅点击"加载"至波形图查看↗️</p>
+                    <div class="audio-list" id="audioList">
+                        <!-- 音频列表将在这里动态生成 -->
+                    </div>
+                    
+                    <div class="shortcuts">
+                        <h2 class="section-title">操作快捷键</h2>
+                        <div class="shortcut-item">
+                            <span>播放/暂停</span>
+                            <span class="key">空格</span>
+                        </div>
+                        <div class="shortcut-item">
+                            <span>撤销</span>
+                            <span class="key">Ctrl+Z</span>
+                        </div>
+                        <div class="shortcut-item">
+                            <span>恢复（反向撤销）</span>
+                            <span class="key">Ctrl+Y</span>
+                        </div>
+                        <div class="shortcut-item">
+                            <span>删除（删除选中区域）</span>
+                            <span class="key">Delete</span>
+                        </div>
+                        <div class="shortcut-item">
+                            <span>提取（仅保留选中区域）</span>
+                            <span class="key">Ctrl+K</span>
+                        </div>
+                        <div class="shortcut-item">
+                            <span>复制（复制选中区域）</span>
+                            <span class="key">Ctrl+C</span>
+                        </div>
+                        <div class="shortcut-item">
+                            <span>剪切（复制并删除选中区域）</span>
+                            <span class="key">Ctrl+X</span>
+                        </div>
+                        <div class="shortcut-item">
+                            <span>粘贴（插入复制的音频）</span>
+                            <span class="key">Ctrl+V</span>
+                        </div>
+                        <div class="shortcut-item">
+                            <span>暂存（选中区域存到暂存区）</span>
+                            <span class="key">Ctrl+S</span>
+                        </div>
+                        <!-- 新增：滚轮缩放提示 -->
+                        <div class="shortcut-item">
+                            <span>滚轮缩放</span>
+                            <span class="key">鼠标滚轮</span>
+                        </div>
+                        <!-- 新增：从选择点播放提示 -->
+                        <div class="shortcut-item">
+                            <span>从选择点播放</span>
+                            <span class="key">点击选择点+空格</span>
+                        </div>
+                        <!-- 新增：响度控制提示 -->
+                        <div class="shortcut-item">
+                            <span>响度控制</span>
+                            <span class="key">右侧滑动条</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="main-panel">
+                <div class="section">
+                    <h2 class="section-title">音频波形图</h2>
+                    
+                    <div class="clip-controls">
+                       <button class="btn btn-primary" id="saveClipBtn">
+                            <span>暂存</span>
+                        </button>
+                        <button class="btn btn-danger" id="deleteBtn">
+                            <span>删除</span>
+                        </button>
+                        <button class="btn btn-warning" id="cutBtn">
+                            <span>提取</span>
+                        </button>
+                        <button class="btn btn-success" id="exportBtn">
+                            <span>导出</span>
+                        </button>
+                        <button class="btn btn-outline" id="copyBtn">
+                            <span>复制</span>
+                        </button>
+                        <button class="btn btn-outline" id="cutToClipboardBtn">
+                            <span>剪切</span>
+                        </button>
+                        <button class="btn btn-outline" id="pasteBtn">
+                            <span>粘贴</span>
+                        </button>
+                        <button class="btn btn-outline" id="undoBtn">
+                            <span>撤销</span>
+                        </button>
+                        <button class="btn btn-outline" id="redoBtn">
+                            <span>恢复</span>
+                        </button>
+                    </div>
+                    
+                    <!-- 缩放控制 -->
+                    <div class="zoom-controls">
+                        <button class="btn btn-outline" id="zoomOutBtn">
+                            <span>缩小</span>
+                        </button>
+                        <input type="range" class="zoom-slider" id="zoomSlider" min="1" max="25" step="0.1" value="1">
+                        <button class="btn btn-outline" id="zoomInBtn">
+                            <span>放大</span>
+                        </button>
+                        <div class="zoom-value" id="zoomValue">100%</div>
+                        <button class="btn btn-outline" id="resetZoomBtn">
+                            <span>重置</span>
+                        </button>
+                    </div>
+                    
+                    <div class="waveform-container">
+                        <div id="waveform">
+                            <!-- 波形将在这里绘制 -->
+                            <div class="playhead" id="playhead"></div>
+                            <div class="selection" id="selection">
+                                <div class="selection-handle start" id="selectionStartHandle"></div>
+                                <div class="selection-handle end" id="selectionEndHandle"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- 新增：响度控制滑动条 - 已修改增加长度 -->
+                        <div class="amplitude-control-container">
+                            <div class="amplitude-label">响度</div>
+                            <input type="range" class="amplitude-slider" id="amplitudeSlider" min="0" max="2" step="0.01" value="1">
+                            <div class="amplitude-value" id="amplitudeValue">100%</div>
+                        </div>
+                    </div>
+                    
+                    <!-- 滚动条 -->
+                    <div class="scroll-container" id="scrollContainer">
+                        <div class="scroll-content" id="scrollContent">
+                            <div class="scroll-thumb" id="scrollThumb"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="time-display">
+                        <span>音频: </span>
+                        <span id="currentTime">0:00.000</span> / <span id="duration">0:00.000</span>
+                        <span id="selectionTime"> | 选择: 0:00.000 - 0:00.000 共0ms</span>
+                    </div>
+                    
+                    <div class="playback-controls">
+                        <button class="btn btn-outline" id="loopBtn" aria-label="循环播放" aria-pressed="false">
+                            <span>🔁 循环</span>
+                        </button>
+                        <button class="btn btn-primary" id="playBtn">
+                            <span>播放</span>
+                        </button>
+                        <button class="btn btn-outline" id="pauseBtn">
+                            <span>暂停</span>
+                        </button>
+                        <button class="btn btn-outline" id="stopBtn">
+                            <span>停止</span>
+                        </button>
+                    </div>
+                    
+                    <div class="progress">
+                        <div class="progress-bar" id="progressBar"></div>
+                    </div>
+                </div>
+                
+                <div class="section">
+                    <h2 class="section-title">
+                        音频暂存区
+                        
+                        <button class="btn btn-danger" id="clearClipsBtn">
+                            <span>清空列表</span>
+                        </button>
+                    </h2>
+                    <div style="font-size:medium;margin-bottom: 5px;">粘贴：复制音频后插入或覆盖波形图中的选中区域；加载：把音频上载到波形图中</div>
+                    <div class="clip-list" id="clipList">
+                        <!-- 音频片段将在这里显示 -->
+                    </div>
+                    
+                    <div style="margin-top: 20;">
+                        <button class="btn btn-success" id="mergeBtn">
+                            <span>合并片段</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/edit.js') }}"></script>
+</body>
+</html>
