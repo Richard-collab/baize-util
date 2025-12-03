@@ -753,6 +753,7 @@
         let gainNode = null;
         let isPlaying = false;
         let isLooping = false;
+        console.log('[Init] Audio playback variables initialized. isLooping:', isLooping, 'isPlaying:', isPlaying);
         let startTime = 0;
         let pauseTime = 0;
         let currentAudioId = null;
@@ -1997,29 +1998,36 @@
         // 切换循环播放状态
         function toggleLoop() {
             isLooping = !isLooping;
+            console.log('[Loop] Toggle loop button clicked. New state:', isLooping);
             if (isLooping) {
                 loopBtn.classList.add('active');
                 loopBtn.setAttribute('aria-pressed', 'true');
                 statusMessage.textContent = '循环播放已启用';
+                console.log('[Loop] Loop mode enabled');
             } else {
                 loopBtn.classList.remove('active');
                 loopBtn.setAttribute('aria-pressed', 'false');
                 statusMessage.textContent = '循环播放已禁用';
+                console.log('[Loop] Loop mode disabled');
             }
         }
         
         // 播放音频 - 修改：当选择框起始位置等于结束位置时，从选择框起始位置开始播放
         function playAudio() {
+            console.log('[Play] playAudio() called. isPlaying:', isPlaying, 'isLooping:', isLooping, 'pauseTime:', pauseTime);
             if (!audioBuffer) {
                 statusMessage.textContent = '请先加载音频';
+                console.log('[Play] No audio buffer available');
                 return;
             }
             
             if (isPlaying) {
+                console.log('[Play] Audio already playing, pausing instead');
                 pauseAudio();
                 return;
             }
             
+            console.log('[Play] Stopping any existing audio node');
             stopAudioNode();
             
             sourceNode = audioContext.createBufferSource();
@@ -2036,61 +2044,81 @@
             // 使用正确的时间范围（确保开始时间小于结束时间）
             const start = Math.min(selectionStart, selectionEnd);
             const end = Math.max(selectionStart, selectionEnd);
+            console.log('[Play] Selection region - start:', start, 'end:', end, 'selectionStart:', selectionStart, 'selectionEnd:', selectionEnd);
             
             // 修复：如果有暂停时间，从暂停位置继续播放
             if (pauseTime > 0) {
+                console.log('[Play] Resuming from pauseTime:', pauseTime);
                 startOffset = pauseTime;
                 // 如果有选择区域，确保在该区域内播放
                 if (end > start) {
                     // 确保pauseTime在选择区域内
                     if (pauseTime >= start && pauseTime < end) {
                         duration = end - startOffset;
+                        console.log('[Play] Resuming within selection region. Duration:', duration);
                     } else {
                         // 如果pauseTime在区域外，从区域开始播放
                         startOffset = start;
                         duration = end - start;
                         pauseTime = 0;
+                        console.log('[Play] pauseTime outside selection, starting from region start. Duration:', duration);
                     }
                 } else {
                     duration = audioBuffer.duration - startOffset;
+                    console.log('[Play] No selection, playing from pauseTime to end. Duration:', duration);
                 }
             } else {
+                console.log('[Play] Starting new playback (pauseTime = 0)');
                 if (end > start) {
                     // 播放选中区域
                     startOffset = start;
                     duration = end - start;
+                    console.log('[Play] Playing selected region. StartOffset:', startOffset, 'Duration:', duration);
                 } else if (start === end && start > 0) {
                     // 当选择区域只是一个点（起始等于结束）时，从该点开始播放到音频结束
                     startOffset = start;
                     duration = audioBuffer.duration - start;
+                    console.log('[Play] Playing from point to end. StartOffset:', startOffset, 'Duration:', duration);
+                } else {
+                    console.log('[Play] Playing entire audio. Duration:', duration);
                 }
                 // 如果start等于end且等于0，则播放整个音频
             }
             
+            console.log('[Play] Starting audio node. StartOffset:', startOffset, 'Duration:', duration);
             sourceNode.start(0, startOffset, duration);
             startTime = audioContext.currentTime - startOffset;
             isPlaying = true;
+            console.log('[Play] Audio started playing. StartTime:', startTime);
             
             // 修复：添加播放结束事件监听，支持循环播放
             sourceNode.onended = () => {
+                console.log('[Play] Audio playback ended. isLooping:', isLooping, 'audioBuffer:', !!audioBuffer);
                 if (isLooping && audioBuffer) {
+                    console.log('[Play] Loop mode is active, preparing to restart playback');
                     // 循环播放：检查是否有选择区域
                     const start = Math.min(selectionStart, selectionEnd);
                     const end = Math.max(selectionStart, selectionEnd);
+                    console.log('[Play] Loop restart - Selection region: start:', start, 'end:', end);
                     
                     if (end > start) {
                         // 有选择区域时，从选择区域起点开始循环
                         pauseTime = start;
+                        console.log('[Play] Loop restart from selection start:', pauseTime);
                     } else {
                         // 没有选择区域时，从头开始循环
                         pauseTime = 0;
+                        console.log('[Play] Loop restart from beginning:', pauseTime);
                     }
                     
+                    console.log('[Play] Scheduling playAudio() restart with pauseTime:', pauseTime);
                     setTimeout(() => {
+                        console.log('[Play] Executing scheduled playAudio() restart');
                         playAudio();
                     }, 0);
                 } else {
                     // 正常结束
+                    console.log('[Play] Normal playback end (no loop). Cleaning up.');
                     isPlaying = false;
                     pauseTime = 0;
                     updatePlayButton();
@@ -2107,26 +2135,32 @@
         
         // 暂停音频 - 修复：保持当前播放位置，不重置到起点
         function pauseAudio() {
+            console.log('[Pause] pauseAudio() called. isPlaying:', isPlaying, 'sourceNode:', !!sourceNode);
             if (isPlaying && sourceNode) {
                 // 保存当前播放位置
                 pauseTime = audioContext.currentTime - startTime;
+                console.log('[Pause] Pausing at position:', pauseTime, 'currentTime:', audioContext.currentTime, 'startTime:', startTime);
                 sourceNode.stop();
                 isPlaying = false;
                 updatePlayButton();
                 // 不更新playhead，保持在当前位置
                 statusMessage.textContent = '音频已暂停';
+                console.log('[Pause] Audio paused successfully');
             }
         }
         
         // 停止音频 - 重置pauseTime到0并移动playhead到起点
         function stopAudio() {
+            console.log('[Stop] stopAudio() called. sourceNode:', !!sourceNode);
             if (sourceNode) {
                 sourceNode.stop();
                 sourceNode = null;
+                console.log('[Stop] Source node stopped and cleared');
             }
             
             isPlaying = false;
             pauseTime = 0;  // 只有停止时才重置pauseTime
+            console.log('[Stop] Reset state - isPlaying:', isPlaying, 'pauseTime:', pauseTime);
             updatePlayButton();
             updatePlayhead();  // 移动playhead到起点
             statusMessage.textContent = '音频已停止';
@@ -2134,13 +2168,17 @@
         
         // 停止音频节点
         function stopAudioNode() {
+            console.log('[Stop] stopAudioNode() called. sourceNode:', !!sourceNode);
             if (sourceNode) {
                 try {
                     sourceNode.stop();
+                    console.log('[Stop] Source node stopped successfully');
                 } catch (e) {
                     // 节点可能已经停止，忽略错误
+                    console.log('[Stop] Error stopping source node (may already be stopped):', e.message);
                 }
                 sourceNode = null;
+                console.log('[Stop] Source node cleared');
             }
         }
         
