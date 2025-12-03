@@ -1,6 +1,9 @@
         // ============================================
         // Atomic Utility Functions
         // ============================================
+        // Note: These utility functions are provided as building blocks for future
+        // code improvements. Existing code may not yet use them consistently.
+        // New code should prefer these atomic functions over direct DOM manipulation.
         
         // DOM Element Selection
         function getElementByIdSafe(id) {
