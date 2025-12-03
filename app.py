@@ -11,6 +11,10 @@ def home():
     # Flask 会去 templates 文件夹里找这个文件
     return render_template('tts.html')
 
+@app.route('/edit')
+def edit():
+    return render_template('edit.html')
+
 if __name__ == '__main__':
     # 启动服务，开启 debug 模式方便调试
     app.run(debug=True, port=5000)
